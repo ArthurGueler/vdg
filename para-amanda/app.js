@@ -213,6 +213,57 @@
     });
   }
 
+  /* ============================================================
+     MOTIVOS — edite a imagem e a frase de cada carta aqui ↓
+     (pode adicionar/remover cartas; cada uma vira ao tocar)
+     ============================================================ */
+  const TAROT = [
+    { img: 'uploads/the-lovers-2.jpg', motivo: 'da sua risada que conserta meu dia' },
+    { img: 'uploads/enforcado-1.jpg', motivo: 'da sua paciência comigo' },
+    { img: 'uploads/the-lovers-3.jpg', motivo: 'de como você me faz sentir em casa' },
+    { img: 'uploads/enforcado-2.jpg', motivo: 'de você existir do meu lado' },
+    { img: 'uploads/the-lovers-4.jpg', motivo: 'de cantar música ruim alta com você' },
+    { img: 'uploads/enforcado-3.jpg', motivo: 'de ver o mundo de cabeça pra baixo com você' }
+  ];
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ---- Carrossel de cartas The Lovers (viram ao tocar) ---- */
+  function initDeck() {
+    const rail = document.querySelector('[data-deck]');
+    if (!rail) return;
+    rail.innerHTML = TAROT.map((c) =>
+      '<button class="tcard" type="button" aria-label="virar carta">' +
+        '<span class="tcard-inner">' +
+          '<span class="tcard-face tcard-front">' +
+            '<img class="tcard-art" src="' + esc(c.img) + '" alt="carta de tarô" loading="lazy">' +
+            '<span class="tcard-hint">toque para virar</span>' +
+          '</span>' +
+          '<span class="tcard-face tcard-back">' +
+            '<span class="b-eyebrow">eu te amo</span>' +
+            '<span class="b-reason">' + esc(c.motivo) + '</span>' +
+          '</span>' +
+        '</span></button>').join('');
+
+    rail.querySelectorAll('.tcard').forEach((c) => {
+      c.addEventListener('click', () => c.classList.toggle('flipped'));
+    });
+
+    // setas de navegação (rolam o carrossel por uma carta)
+    const stage = rail.closest('.lovers-stage');
+    if (stage) {
+      const step = () => {
+        const card = rail.querySelector('.tcard');
+        return card ? card.offsetWidth + 18 : 260;
+      };
+      const prev = stage.querySelector('.lv-nav.prev');
+      const next = stage.querySelector('.lv-nav.next');
+      if (prev) prev.addEventListener('click', () => rail.scrollBy({ left: -step(), behavior: 'smooth' }));
+      if (next) next.addEventListener('click', () => rail.scrollBy({ left: step(), behavior: 'smooth' }));
+    }
+  }
+
   /* ---- Coração que explode ---- */
   function initTapHeart() {
     const tap = document.querySelector('.tapheart');
@@ -264,6 +315,7 @@
 
   /* ---- Boot ---- */
   function boot() {
+    initDeck();
     initReveal();
     initIntro();
     initPlayer();
