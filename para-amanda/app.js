@@ -160,25 +160,38 @@
         b.addEventListener('click', seekToStart);
       });
 
-      // Tocar automaticamente ao entrar (começando em 00:57).
-      // Se o navegador bloquear o autoplay com som, começa na 1ª interação.
-      const startFrom57AndPlay = () => {
-        if (!didInitialSeek) { seekToStart(); didInitialSeek = true; }
-        return audio.play();
+      // Garante que o seek pra 00:57 acontece assim que possível, mesmo antes do play.
+      // Em iOS, o play() precisa ser SÍNCRONO no handler do gesto, então o seek é
+      // adiado pra quando os metadados chegarem.
+      const seekWhenReady = () => {
+        if (didInitialSeek) return;
+        if (audio.readyState >= 1) { seekToStart(); didInitialSeek = true; return; }
+        audio.addEventListener('loadedmetadata', () => {
+          if (!didInitialSeek) { seekToStart(); didInitialSeek = true; }
+        }, { once: true });
       };
-      const armFirstGesture = () => {
-        const evs = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'];
-        const onFirst = () => {
+
+      // Arma o listener de "primeiro gesto" IMEDIATAMENTE.
+      // play() é chamado SÍNCRONO no handler — iOS Safari exige isso para aceitar o som.
+      const evs = ['pointerdown', 'touchstart', 'click', 'keydown', 'wheel', 'scroll'];
+      const onFirst = () => {
+        if (!audio.paused) {
           evs.forEach((ev) => window.removeEventListener(ev, onFirst));
-          autoStarting = true; // se esse gesto for um clique no ►, não pausar logo depois
-          startFrom57AndPlay().catch(() => { autoStarting = false; });
-          setTimeout(() => { autoStarting = false; }, 500);
-        };
-        evs.forEach((ev) => window.addEventListener(ev, onFirst, { passive: true }));
+          return;
+        }
+        autoStarting = true; // se esse gesto for um clique no ►, não pausar logo depois
+        // play SÍNCRONO — não pode ter await/promise antes disso pra iOS validar o gesto
+        const p = audio.play();
+        seekWhenReady();
+        if (p && p.then) p.then(() => {
+          evs.forEach((ev) => window.removeEventListener(ev, onFirst));
+        }).catch(() => { autoStarting = false; });
+        setTimeout(() => { autoStarting = false; }, 500);
       };
-      const tryAutoplay = () => {
-        startFrom57AndPlay().catch(() => armFirstGesture());
-      };
+      evs.forEach((ev) => window.addEventListener(ev, onFirst, { passive: true }));
+
+      // Tenta autoplay direto também — funciona se o usuário já interagiu antes (PWA, etc.)
+      const tryAutoplay = () => { seekWhenReady(); audio.play().catch(() => {}); };
       if (audio.readyState >= 1) tryAutoplay();
       else audio.addEventListener('loadedmetadata', tryAutoplay, { once: true });
     }

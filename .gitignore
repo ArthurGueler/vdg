@@ -5,3 +5,7 @@
 Thumbs.db
 .DS_Store
 desktop.ini
+
+# Logs de runtime
+server.log
+*.log
